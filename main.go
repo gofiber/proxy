@@ -11,76 +11,75 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-// Config defines the config for BasicAuth middleware
-type Config struct {
-	// Filter defines a function to skip middleware.
-	// Optional. Default: nil
-	Filter func(*fiber.Ctx) bool
+// *fasthttp.HostClient pool
+var poolHostClient = sync.Pool{
+	New: func() interface{} {
+		return new(fasthttp.HostClient)
+	},
+}
 
-	// Backend is the upstream host
-	Backend string
+// Acquire *fasthttp.HostClient from pool
+func acquireHostClient() *fasthttp.HostClient {
+	return poolHostClient.Get().(*fasthttp.HostClient)
+}
 
-	// fasthttp.HostClient pool
-	pool *sync.Pool
+// Return *fasthttp.HostClient to pool
+func releaseHostClient(hc *fasthttp.HostClient) {
+	hc.Addr = ""
+	poolHostClient.Put(hc)
 }
 
 // New returns a new reverse proxy handler
-func New(config ...Config) func(*fiber.Ctx) {
-	// Init config
-	var cfg Config
-	if len(config) > 0 {
-		cfg = config[0]
+func New(target string) func(*fiber.Ctx) {
+	// Must provide a target
+	if target == "" {
+		panic("You must provide a backend server <host>:<port>")
 	}
-	// if cfg.Users == nil {
-	// 	cfg.Users = map[string]string{}
-	// }
-	cfg.pool = &sync.Pool{
-		New: func() interface{} {
-			return new(fasthttp.HostClient)
-		},
-	}
-
 	// Return middleware handler
 	return func(c *fiber.Ctx) {
-		// Filter request to skip middleware
-		if cfg.Filter != nil && cfg.Filter(c) {
-			c.Next()
-			return
-		}
-
-		// Get new hostclient and set some settings
-		client := cfg.acquire()
-		// Release hostclient when we are done
-		defer cfg.release(client)
-		client.Addr = cfg.Backend
-
+		// Get new hostclient from pool and release when done
+		client := acquireHostClient()
+		defer releaseHostClient(client)
+		// Adjust hostclient settings
+		client.Addr = target
 		// Prepare request
 		req := &c.Fasthttp.Request
 		resp := &c.Fasthttp.Response
-
-		// Strip unneeded headers from request
+		// Alter request and remove unneeded headers from request
 		req.Header.Del("Connection")
-		// Alter other request params before sending them to upstream host
-
 		// Make request to upstream host and handle erropr
 		if err := client.Do(req, resp); err != nil {
 			c.SendStatus(503) // Service Unavailble
 			return
 		}
-
-		// Remove unneeded headers from response
+		// Alter request and remove unneeded headers from response
 		resp.Header.Del("Connection")
-		// Alter other response data if needed
 	}
 }
 
-// Acquire Ctx from pool
-func (config *Config) acquire() *fasthttp.HostClient {
-	return config.pool.Get().(*fasthttp.HostClient)
-}
-
-// Return Ctx to pool
-func (config *Config) release(hc *fasthttp.HostClient) {
-	hc.Addr = ""
-	config.pool.Put(hc)
+// Forward proxies the Ctx to the target
+func Forward(c *fiber.Ctx, target string) error {
+	// Must provide a target
+	if target == "" {
+		panic("You must provide a backend server <host>:<port>")
+	}
+	// Get new hostclient from pool and release when done
+	client := acquireHostClient()
+	defer releaseHostClient(client)
+	// Adjust hostclient settings
+	client.Addr = target
+	// Prepare request
+	req := &c.Fasthttp.Request
+	resp := &c.Fasthttp.Response
+	// Alter request and remove unneeded headers from request
+	req.Header.Del("Connection")
+	// Make request to upstream host and handle erropr
+	if err := client.Do(req, resp); err != nil {
+		c.SendStatus(503) // 503 Service Unavailble
+		return err
+	}
+	// Alter request and remove unneeded headers from response
+	resp.Header.Del("Connection")
+	// Return without errors
+	return nil
 }
