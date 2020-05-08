@@ -74,7 +74,7 @@ func New(config ...Config) func(*fiber.Ctx) {
 	}
 
 	if len(cfg.DownstreamHosts) == 0 {
-		log.Fatal("Fiber: Proxy middleware requires at least one downstream target")
+		log.Fatal("Fiber: Proxy middleware requires at least one backend server <host>:<port>")
 	}
 
 	if cfg.ErrorHandler == nil {
