@@ -54,7 +54,8 @@ type Config struct {
 
 	// Rules defines the URL path rewrite rules. The values captured in asterisk can be
 	// retrieved by index e.g. $1, $2 and so on.
-	// Required. Example:
+	// Optional. Default: nil
+	// Example:
 	// "/old":              "/new",
 	// "/api/*":            "/$1",
 	// "/js/*":             "/public/javascripts/$1",
