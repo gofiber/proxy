@@ -16,7 +16,8 @@ proxy.Forward(c *fiber.Ctx, target string) error
 ### Functions
 | Name | Signature | Description
 | :--- | :--- | :---
-| New | `func New(target string) func(*fiber.Ctx)` | Returns a handler that proxies the request
+| New | `New(config ...Config) func(*fiber.Ctx)` | Returns a middleware that proxies the request
+| Handler | `Handler(target string) func(*fiber.Ctx)` | Returns a handler that proxies the request
 | Forward | `func Forward(c *fiber.Ctx, target string) error` | A function that proxies the requests
 
 ### Example
@@ -37,6 +38,17 @@ func main() {
 func proxy() {
 	app := fiber.New()
 
+	app.Use("/proxy", proxy.New(proxy.Config{
+		DownstreamHosts: []string{
+			"127.0.0.1:3001",
+			"127.0.0.1:3002",
+		},
+		Rules: map[string]string{
+			"/proxy": "/",
+		},
+		UpstreamMethods: []string{"GET"},
+	}))
+
 	app.Get("/3001", func(ctx *fiber.Ctx) {
 		// Alter request
 		ctx.Set("X-Forwarded-For", "3001")
@@ -49,7 +61,7 @@ func proxy() {
 		ctx.Set("X-Forwarded-By", "3001")
 	})
 
-	app.Get("/3002", proxy.New("127.0.0.1:3002")) // handler
+	app.Get("/3002", proxy.Handler("127.0.0.1:3002")) // handler
 
 	app.Listen(3000)
 }
