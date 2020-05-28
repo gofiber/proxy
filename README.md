@@ -1,4 +1,9 @@
-### Proxy
+# Proxy
+
+![Test](https://github.com/gofiber/proxy/workflows/Test/badge.svg)
+![Security](https://github.com/gofiber/proxy/workflows/Security/badge.svg)
+![Linter](https://github.com/gofiber/proxy/workflows/Linter/badge.svg)
+
 Simple reverse proxy
 
 ### Install
