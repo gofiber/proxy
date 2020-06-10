@@ -130,7 +130,10 @@ func Handler(target string) func(*fiber.Ctx) {
 	}
 
 	return func(c *fiber.Ctx) {
-		Forward(c, target)
+		if err := Forward(c, target); err != nil {
+			log.Printf("Fiber: Proxy middleware error [%v]", err)
+			return
+		}
 	}
 }
 
