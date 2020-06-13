@@ -130,7 +130,9 @@ func Handler(target string) func(*fiber.Ctx) {
 	}
 
 	return func(c *fiber.Ctx) {
-		Forward(c, target)
+		if err := Forward(c, target); err != nil {
+			c.Next(err)
+		}
 	}
 }
 
