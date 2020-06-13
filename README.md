@@ -46,14 +46,14 @@ func proxy() {
 	app := fiber.New()
 
 	app.Use("/proxy", proxy.New(proxy.Config{
-		DownstreamHosts: []string{
+		Targets: []string{
 			"127.0.0.1:3001",
 			"127.0.0.1:3002",
 		},
 		Rules: map[string]string{
 			"/proxy": "/",
 		},
-		UpstreamMethods: []string{"GET"},
+		Methods: []string{"GET"},
 	}))
 
 	app.Get("/3001", func(ctx *fiber.Ctx) {
