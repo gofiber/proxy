@@ -35,14 +35,14 @@ func releaseHostClient(hc *fasthttp.HostClient) {
 
 // Config holds configuration for the middleware
 type Config struct {
-	// DownstreamHosts is list of backend hosts used to proxy the request.
+	// Targets is list of backend hosts used to proxy the request.
 	// Backend hosts is selected by Round-Robin scheduling.
 	// Required. Default: nil
-	DownstreamHosts []string
+	Targets []string
 
-	// UpstreamMethods is list of HTTP methods allowed for proxying.
+	// Methods is list of HTTP methods allowed for proxying.
 	// Optional. Default: nil
-	UpstreamMethods []string
+	Methods []string
 
 	// Filter defines a function to skip middleware.
 	// Optional. Default: nil
@@ -73,7 +73,7 @@ func New(config ...Config) func(*fiber.Ctx) {
 		cfg = config[0]
 	}
 
-	if len(cfg.DownstreamHosts) == 0 {
+	if len(cfg.Targets) == 0 {
 		log.Fatal("Fiber: Proxy middleware requires at least one backend server <host>:<port>")
 	}
 
@@ -98,7 +98,7 @@ func New(config ...Config) func(*fiber.Ctx) {
 			return
 		}
 
-		for _, method := range cfg.UpstreamMethods {
+		for _, method := range cfg.Methods {
 			if c.Method() != strings.ToUpper(method) {
 				c.Next()
 				return
@@ -115,7 +115,7 @@ func New(config ...Config) func(*fiber.Ctx) {
 			}
 		}
 
-		target := strings.Join(cfg.DownstreamHosts, ",")
+		target := strings.Join(cfg.Targets, ",")
 		if err := proxy(req, resp, target); err != nil {
 			cfg.ErrorHandler(c, err)
 		}
@@ -130,7 +130,9 @@ func Handler(target string) func(*fiber.Ctx) {
 	}
 
 	return func(c *fiber.Ctx) {
-		Forward(c, target)
+		if err := Forward(c, target); err != nil {
+			c.Next(err)
+		}
 	}
 }
 
